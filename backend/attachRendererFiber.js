@@ -223,6 +223,9 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
         tag === ForwardRef) &&
       !!fiber.memoizedState;
 
+    // Element filtering
+    var hiddenType = 'Other';
+
     var resolvedType = type;
     if (typeof type === 'object' && type !== null) {
       if (typeof type.then === 'function') {
@@ -247,6 +250,10 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
       case IndeterminateComponent:
         nodeType = 'Composite';
         name = getDisplayName(resolvedType);
+        if (name.indexOf('(') >= 0) {
+          // HACK heuristic for a HOC is a name with ()s (e.g. "connect(MyComponent)")
+          hiddenType = 'HOC';
+        }
         publicInstance = fiber.stateNode;
         props = fiber.memoizedProps;
         state = fiber.memoizedState;
@@ -271,6 +278,7 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
       case ForwardRef:
         const functionName = getDisplayName(resolvedType.render, '');
         nodeType = 'Special';
+        hiddenType = 'ForwardRef';
         name = resolvedType.displayName || (
           functionName !== ''
             ? `ForwardRef(${functionName})`
@@ -295,6 +303,7 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
         break;
       case HostComponent:
         nodeType = 'Native';
+        hiddenType = 'Native';
         name = fiber.type;
 
         // TODO (bvaughn) we plan to remove this prefix anyway.
@@ -327,6 +336,7 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
         break;
       case Fragment:
         nodeType = 'Wrapper';
+        hiddenType = 'Fragment';
         children = [];
         break;
       case MemoComponent:
@@ -356,6 +366,7 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
           case CONCURRENT_MODE_SYMBOL_STRING:
           case DEPRECATED_ASYNC_MODE_SYMBOL_STRING:
             nodeType = 'Special';
+            hiddenType = 'Mode';
             name = 'ConcurrentMode';
             children = [];
             break;
@@ -369,6 +380,7 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
             resolvedContext = fiber.type._context || fiber.type.context;
 
             name = `${resolvedContext.displayName || 'Context'}.Provider`;
+            hiddenType = 'ContextProvider';
             children = [];
             break;
           case CONTEXT_CONSUMER_NUMBER:
@@ -383,11 +395,13 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
             // NOTE: TraceUpdatesBackendManager depends on the name ending in '.Consumer'
             // If you change the name, figure out a more resilient way to detect it.
             name = `${resolvedContext.displayName || 'Context'}.Consumer`;
+            hiddenType = 'ContextConsumer';
             children = [];
             break;
           case STRICT_MODE_NUMBER:
           case STRICT_MODE_SYMBOL_STRING:
             nodeType = 'Special';
+            hiddenType = 'Mode';
             name = 'StrictMode';
             children = [];
             break;
@@ -405,12 +419,14 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
           case PROFILER_NUMBER:
           case PROFILER_SYMBOL_STRING:
             nodeType = 'Special';
+            hiddenType = 'Profiler';
             props = fiber.memoizedProps;
             name = `Profiler(${fiber.memoizedProps.id})`;
             children = [];
             break;
           default:
             nodeType = 'Native';
+            hiddenType = 'Native';
             props = fiber.memoizedProps;
             name = 'TODO_NOT_IMPLEMENTED_YET';
             children = [];
@@ -491,6 +507,9 @@ function attachRendererFiber(hook: Hook, rid: string, renderer: ReactRenderer): 
 
       // Hooks inspection
       containsHooks,
+
+      // Element filtering
+      hiddenType,
     };
   }
 

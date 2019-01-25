@@ -11,7 +11,7 @@
 'use strict';
 
 var {EventEmitter} = require('events');
-var {Map, Set, List} = require('immutable');
+var {Map, Set: ImmutableSet, List} = require('immutable');
 var assign = require('object-assign');
 var { copy } = require('clipboard-js');
 var nodeMatchesText = require('./nodeMatchesText');
@@ -22,11 +22,13 @@ var SearchUtils = require('./SearchUtils');
 var ThemeStore = require('./Themes/Store');
 const {get, set} = require('../utils/storage');
 
+const LOCAL_STORAGE_HIDDEN_TYPES = 'hiddenTypes';
 const LOCAL_STORAGE_TRACE_UPDATES_KEY = 'traceUpdates';
 
 import type Bridge from '../agent/Bridge';
 import type {InspectedHooks} from '../backend/types';
 import type {DOMEvent, ElementID, Theme} from './types';
+import type {HiddenType} from '../backend/types';
 import type {Snapshot} from '../plugins/Profiler/ProfilerTypes';
 
 type ListenerFunction = () => void;
@@ -102,6 +104,7 @@ class Store extends EventEmitter {
   colorizer: boolean = false;
   inspectedHooks: InspectedHooks | null = null;
   contextMenu: ?ContextMenu;
+  hiddenTypes: Set<HiddenType> = new Set(get(LOCAL_STORAGE_HIDDEN_TYPES));
   hovered: ?ElementID;
   isBottomTagHovered: boolean;
   isBottomTagSelected: boolean;
@@ -623,6 +626,16 @@ class Store extends EventEmitter {
     this._bridge.send('isRecording', isRecording);
   }
 
+  toggleHiddenType(hiddenType: HiddenType) {
+    if (this.hiddenTypes.has(hiddenType)) {
+      this.hiddenTypes.delete(hiddenType);
+    } else {
+      this.hiddenTypes.add(hiddenType);
+    }
+    this.emit('hiddenTypes');
+    set(LOCAL_STORAGE_HIDDEN_TYPES, [...this.hiddenTypes]);
+  }
+
   // Private stuff
   _establishConnection() {
     var tries = 0;
@@ -689,7 +702,7 @@ class Store extends EventEmitter {
         this._parents = this._parents.set(cid, data.id);
       });
     }
-    var curNodes = this._nodesByName.get(data.name) || new Set();
+    var curNodes = this._nodesByName.get(data.name) || new ImmutableSet();
     this._nodesByName = this._nodesByName.set(data.name, curNodes.add(data.id));
     this.emit(data.id);
   }

@@ -591,6 +591,8 @@ function wrapWithHoc(Component) {
     }
   }
 
+  HigherOrderComponent.displayName = 'HigherOrderComponent(Component)';
+
   return HigherOrderComponent;
 }
 
