@@ -193,9 +193,7 @@ class Node extends React.Component<PropsType, StateType> {
       node,
       onContextMenu,
       onHover,
-      onHoverBottom,
       onSelect,
-      onSelectBottom,
       onToggleCollapse,
       onShowCopyableInput,
       searchRegExp,
@@ -204,6 +202,7 @@ class Node extends React.Component<PropsType, StateType> {
       wrappedChildren,
     } = this.props;
     const {isWindowFocused} = this.state;
+    const nodeType = node.get('nodeType');
 
     if (!node) {
       return 'Node was deleted';
@@ -211,13 +210,13 @@ class Node extends React.Component<PropsType, StateType> {
 
     let children = node.get('children');
 
-    if (node.get('nodeType') === 'Wrapper') {
+    if (nodeType === 'Wrapper') {
       return children.map(child =>
         <WrappedNode key={child} id={child} depth={depth}/>
       );
     }
 
-    if (node.get('nodeType') === 'NativeWrapper') {
+    if (nodeType === 'NativeWrapper') {
       children = wrappedChildren;
     }
 
@@ -235,6 +234,7 @@ class Node extends React.Component<PropsType, StateType> {
       isSelected: selected,
       isWindowFocused,
       theme,
+      nodeType,
     });
 
     const headEvents = {
@@ -244,13 +244,6 @@ class Node extends React.Component<PropsType, StateType> {
       onMouseOut: () => onHover(false),
       onMouseDown: onSelect,
     };
-    const tailEvents = {
-      onContextMenu: onContextMenu,
-      onDoubleClick: onToggleCollapse,
-      onMouseOver: () => onHoverBottom(true),
-      onMouseOut: () => onHoverBottom(false),
-      onMouseDown: onSelectBottom,
-    };
 
     const onNameDoubleClick = e => {
       if (!collapsed) {
@@ -259,7 +252,6 @@ class Node extends React.Component<PropsType, StateType> {
       onShowCopyableInput();
     };
 
-    const nodeType = node.get('nodeType');
     if (nodeType === 'Text' || nodeType === 'Empty') {
       let tag;
       if (nodeType === 'Text') {
@@ -321,45 +313,29 @@ class Node extends React.Component<PropsType, StateType> {
       return (
         <div style={headWrapperStyle}>
           <div style={sharedHeadStyle} {...headEvents}>
-            &lt;
             {showCopyableInput ? 
               <input ref={this._setHeadRef} defaultValue={nameString} readOnly="readonly" size={nameString.length} style={copyableElementName} />
               : <span ref={this._setHeadRef} style={jsxSingleLineTagStyle} onDoubleClick={onNameDoubleClick}>{name}</span>
             }
-            {node.get('key') &&
-              <Props key="key" props={{'key': node.get('key')}} inverted={inverted}/>
-            }
-            {node.get('props') &&
-              <Props key="props" props={node.get('props')} inverted={inverted}/>
-            }
-            {isCollapsed ? ' />' : '>'}
-            {!isCollapsed && [
+            <div style={propsContainerStyles}>
+              {node.get('key') &&
+                <Props key="key" props={{'key': node.get('key')}} inverted={inverted}/>
+              }
+              {node.get('props') &&
+                <Props key="props" props={node.get('props')} inverted={inverted}/>
+              }
+            </div>
+            {!isCollapsed &&
               <Fragment key="content">
+                &nbsp;
                 {content}
-              </Fragment>,
-              <span key="close">
-                &lt;/
-                <span style={jsxSingleLineTagStyle}>{name}</span>
-                &gt;
-              </span>,
-            ]}
+              </Fragment>
+            }
             {selected && <span style={dollarRStyle}>&nbsp;== $r</span>}
           </div>
         </div>
       );
     }
-
-    const jsxCloseTagStyle = jsxTagStyle(inverted && (isBottomTagSelected || collapsed), nodeType, theme);
-    const closeTag = (
-      <Fragment>
-        &lt;/
-        <span ref={this._setTailRef} style={jsxCloseTagStyle}>{name}</span>
-        &gt;
-        {selected && ((collapsed && !this.props.isBottomTagSelected) || this.props.isBottomTagSelected) &&
-          <span style={dollarRStyle}>&nbsp;== $r</span>
-        }
-      </Fragment>
-    );
 
     const headInverted = inverted && (!isBottomTagSelected || collapsed);
 
@@ -376,40 +352,28 @@ class Node extends React.Component<PropsType, StateType> {
         >
           {collapsed ? '▶' : '▼'}
         </span>
-        &lt;
         {showCopyableInput ? 
           <input ref={this._setHeadRef} defaultValue={nameString} readOnly="readonly" size={nameString.length} style={copyableElementName} />
           : <span ref={this._setHeadRef} style={jsxOpenTagStyle} onDoubleClick={onNameDoubleClick}>{name}</span>
         }
 
-        {node.get('key') &&
-          <Props key="key" props={{'key': node.get('key')}} inverted={headInverted}/>
-        }
-        {node.get('props') &&
-          <Props key="props" props={node.get('props')} inverted={headInverted}/>
-        }
-        &gt;
+        <div style={propsContainerStyles}>
+          {node.get('key') &&
+            <Props key="key" props={{'key': node.get('key')}} inverted={headInverted}/>
+          }
+          {node.get('props') &&
+            <Props key="props" props={node.get('props')} inverted={headInverted}/>
+          }
+        </div>
         {selected && !collapsed && !this.props.isBottomTagSelected &&
           <span style={dollarRStyle}>&nbsp;== $r</span>
         }
-        {collapsed && '…'}
-        {collapsed && closeTag}
       </div>
     );
 
     if (collapsed) {
       return head;
     }
-
-    const tailStyleActual = tailStyle({
-      depth,
-      isBottomTagHovered,
-      isBottomTagSelected,
-      isHovered: hovered,
-      isSelected: selected,
-      isWindowFocused,
-      theme,
-    });
 
     return (
       <div style={headWrapperStyle}>
@@ -427,9 +391,6 @@ class Node extends React.Component<PropsType, StateType> {
           boxSizing: 'border-box',
         }}>
           {children.map(id => <WrappedNode key={id} depth={depth + 1} id={id}/>)}
-        </div>
-        <div style={tailStyleActual} {...tailEvents}>
-          {closeTag}
         </div>
       </div>
     );
@@ -511,18 +472,32 @@ const headStyle = ({
   isSelected,
   isWindowFocused,
   theme,
+  nodeType,
 }: headStyleParams) => {
   let backgroundColor;
+  let borderColor = theme.state03;
+
   if (isSelected && (isCollapsed || !isBottomTagSelected)) {
     backgroundColor = isWindowFocused
       ? theme.state00
       : theme.state01;
+    borderColor = theme.base00;
   } else if (isHovered && (isCollapsed || !isBottomTagHovered)) {
     backgroundColor = theme.state03;
+    borderColor = theme.base00;
   }
 
   const isInverted = isSelected && isWindowFocused && (isCollapsed || !isBottomTagSelected);
   const color = isInverted ? theme.state02 : undefined;
+  const modifiedStyle = () => {
+    return !(nodeType === 'Native' || nodeType === 'Text') && {
+      paddingTop: '.3rem',
+      paddingBottom: '.3rem',
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor,
+    };
+  };
 
   return {
     cursor: 'default',
@@ -531,33 +506,48 @@ const headStyle = ({
     flexShrink: 0,
     flexWrap: 'wrap',
     borderRadius: '0.125rem',
+    marginBottom: 2,
     paddingLeft: '1rem',
     paddingRight,
     backgroundColor,
     color,
+    ...modifiedStyle(),
   };
 };
+
+const propsContainerStyles = ({
+
+});
 
 const copyableElementName = {
   border: 'none',
   boxShadow: '2px 2px 4px rgba(0, 0, 0, 0.25)',
   fontFamily: monospace.family,
 };
+const jsxTagStyleDefault = {
+  fontWeight: 'bold',
+  letterSpacing: '.02rem',
+};
 
 const jsxTagStyle = (inverted: boolean, nodeType: string, theme: Theme) => {
   let color;
+  let opacity;
   if (inverted) {
     color = theme.state02;
   } else if (nodeType === 'Special') {
     color = theme.special01;
   } else if (nodeType === 'Composite') {
     color = theme.special00;
+  } else if (nodeType === 'Native') {
+    opacity = 0.3;
   } else {
     color = theme.special07;
   }
 
   return {
+    ...jsxTagStyleDefault,
     color,
+    opacity,
   };
 };
 
@@ -576,46 +566,6 @@ const highlightStyle = (theme: Theme) => ({
   color: theme.state05,
 });
 
-type tailStyleParams = {
-  depth: number,
-  isBottomTagHovered: boolean,
-  isBottomTagSelected: boolean,
-  isHovered: boolean,
-  isSelected: boolean,
-  isWindowFocused: boolean,
-  theme: Theme
-};
-
-const tailStyle = ({
-  depth,
-  isBottomTagHovered,
-  isBottomTagSelected,
-  isHovered,
-  isSelected,
-  isWindowFocused,
-  theme,
-}: tailStyleParams) => {
-  let backgroundColor;
-  if (isSelected && isBottomTagSelected) {
-    backgroundColor = isWindowFocused
-      ? theme.state00
-      : theme.state01;
-  } else if (isHovered && isBottomTagHovered) {
-    backgroundColor = theme.state03;
-  }
-
-  const isInverted = isSelected && isWindowFocused && isBottomTagSelected;
-  const color = isInverted ? theme.state02 : theme.base04;
-
-  return {
-    cursor: 'default',
-    paddingLeft: '1rem',
-    paddingRight,
-    backgroundColor,
-    color,
-  };
-};
-
 const guidelineStyle = (depth: number, isSelected: boolean, isHovered: boolean, isBottomTagHovered: boolean, theme: Theme) => {
   let borderLeftColor = 'transparent';
   if (isSelected) {
@@ -629,7 +579,7 @@ const guidelineStyle = (depth: number, isSelected: boolean, isHovered: boolean, 
     position: 'absolute',
     width: '1px',
     borderLeft: `1px solid ${borderLeftColor}`,
-    top: '1rem',
+    top: '1.6rem',
     bottom: 0,
     left: '0.5rem',
     // Bring it in front of the hovered children, but make sure

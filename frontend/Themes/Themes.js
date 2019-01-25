@@ -444,7 +444,7 @@ const MaterialDark: Theme = {
   base03: '#445052',
   base04: '#718184',
   base05: '#B2CCD6',
-  special00: '#f95479',
+  : '#f95479',
   special01: '#F78C6A',
   special02: '#C3E88D',
   special03: '#89DDF3',
