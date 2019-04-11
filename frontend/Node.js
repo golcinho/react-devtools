@@ -205,11 +205,12 @@ class Node extends React.Component<PropsType, StateType> {
       wrappedChildren,
     } = this.props;
     const {isWindowFocused} = this.state;
-    const nodeType = node.get('nodeType');
 
     if (!node) {
       return 'Node was deleted';
     }
+
+    const nodeType = node.get('nodeType');
 
     let children = node.get('children');
 
